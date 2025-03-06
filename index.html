@@ -1,25 +1,37 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Provador de Fórmulas Proposicionais</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="script.js"></script>
+    <title>Calculadora</title>
+	<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-    <h1>Provador de Fórmulas Proposicionais</h1>
-    
-    <input type="text" id="inputFormula" placeholder="Digite a fórmula">
-    <button>Verificar Fórmula</button>
-    
-    <div id="resultado"></div>
-    
-    <table id="tabelaVerdade" border="1">
-        <thead></thead>
-        <tbody></tbody>
-    </table>
-
+    <div class="container">
+        <div class="options">
+            <button onclick="char('A')">A</button>
+            <button onclick="char('B')">B</button>
+            <button onclick="char('C')">C</button>
+            <button onclick="char('D')">D</button>
+            <button onclick="char('D')">D</button>
+            <button onclick="char('→')">→</button>
+            <button onclick="char('∧')">∧</button>
+            <button onclick="char('∨')">∨</button>
+            <button onclick="char('¬')">¬</button>
+            <button onclick="char('↔')">↔</button>
+            <button onclick="char('(')">(</button>
+            <button onclick="char(')')">)</button>
+        </div>
+        <div class="input-formula">
+            <label for="formula">Insira a fórmula: </label>
+            <input type="text" id="formula">
+        </div>
+        <div class="button">
+            <button class="calculate-btn" onclick="tabelaVerdade()">Resultado</button>
+            <button class="clear-btn" onclick="limpar()">Limpar</button>
+        </div>
+        <div id="result"></div>
+    </div>
+    <script src="script.js"></script>
 </body>
 </html>
