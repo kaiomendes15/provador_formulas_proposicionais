@@ -1,5 +1,5 @@
 function analisadorLexico(formula) {
-    const validos = /^[A-E→∧∨¬↔() ]*$/;
+    const validos = /^[A-E→∧∨¬↔⊕() ]*$/;
 
     // percorre por cada caractere da formula
     for (let char of formula) {
@@ -15,6 +15,64 @@ function analisadorLexico(formula) {
     return { valido: true };
 }
 
+function verificaParenteses(formula) {
+    let parentesesFecha = []; // controla os parenteses.
+    // a cada interação ele reseta/volta a estar vazio.
+
+    // percorre toda a formula
+    for (let i = 0; i < formula.length; i++) {
+        let char = formula[i];
+
+        // verifica se possui um parentese abrindo
+        if (char === "(") {
+            // adiciona no array de controle
+            parentesesFecha.push(char);
+
+            // verifica se possui um parentese fechando
+        } else if (char === ")") {
+            // se o array de controle estiver vazio, significa que esse parentese fechando virá primeiro. => não pode
+            if (parentesesFecha.length === 0) {
+                return { valido: false, erro: "Parênteses desbalanceados." };
+            }
+
+            // se nao for o primeiro valor, significa que os parenteses estão ok.
+            parentesesFecha.pop();
+        }
+    }
+
+    if (parentesesFecha.length > 0) return { valido: false, erro: "Parênteses desbalanceados" };
+    return { valido: true };
+}
+
+function analisadorSintatico(formula) {
+    // verifica se os parenteses estão balanceados
+    const isParentesesOk = verificaParenteses(formula);
+
+    // se não estiverem, já retorna a fórmula como inválida.
+    if (!isParentesesOk.valido) {
+        return { valido: false, erro: isParentesesOk.erro };
+    }
+
+    // armazena o caractere anterior
+    let anterior = '';
+
+    // percorre a fórmula.
+    for (let i = 0; i < formula.length; i++) {
+        let char = formula[i];
+        // console.log(`[${i}]: ${'^∨→↔∨/~'.includes(char) && '^∨→↔∨/~'.includes(anterior)}`);
+
+        // verifica se o caractere atual é um conectivo igual ao caractere anterior
+        if ('∧∨→↔⊕¬'.includes(char) && '∧∨→↔⊕¬'.includes(anterior)) {
+            return { valido: false, erro: "Conectivos em sequência." };
+        }
+
+        // atualiza o valor do caractere anterior para a próxima interação
+        anterior = char;
+    }
+
+    return { valido: true };
+}
+
 function tabelaVerdade() {
     const formula = document.getElementById('formula').value;
     const result = document.getElementById('result');
@@ -25,9 +83,15 @@ function tabelaVerdade() {
         return;
     }
 
-    const analise = analisadorLexico(formula);
-    if (analise.valido == false) {
-        result.innerHTML = `<p class="erro">${analise.erro}</p>`;
+    const analiseLexica = analisadorLexico(formula);
+    if (analiseLexica.valido == false) {
+        result.innerHTML = `<p class="erro">${analiseLexica.erro}</p>`;
+        return;
+    }
+
+    const analiseSintatica = analisadorSintatico(formula);
+    if (analiseSintatica.valido == false) {
+        result.innerHTML = `<p class="erro">${analiseSintatica.erro}</p>`;
         return;
     }
 
@@ -65,99 +129,77 @@ function tabelaVerdade() {
 
 function validar(formula, valor) {
     function pegaValor(c) {
-        return valor[c] || 1;
+        return valor[c] !== undefined ? valor[c] : 0;
     }
 
-    function parentese(inseridos) {
-        if (!inseridos) {
-            return 0;
+    function parentese(exp) {
+        exp = exp.trim();
+
+        // Caso seja uma variável, retorna seu valor
+        if (/^[A-E]$/.test(exp)) {
+            return pegaValor(exp);
         }
-        inseridos = inseridos.trim();
-        while (inseridos.startsWith('¬')) {
-            inseridos = inseridos.slice(1).trim();
-            return 1 - parentese(inseridos);
+
+        // Caso seja um número, retorna diretamente
+        if (/^[0-1]$/.test(exp)) {
+            return parseInt(exp);
         }
-        if (/^[A-E]$/.test(inseridos)) {
-            return pegaValor(inseridos);
+
+        // Aplica a negação corretamente antes de continuar
+        while (exp.startsWith('¬')) {
+            exp = exp.slice(1).trim();
+            return 1 - parentese(exp);
         }
-        let tamanhoParentese = 0;
-        let comeco = -1;
-        let fim = -1;
-        for (let i = 0; i < inseridos.length; i++) {
-            if (inseridos[i] === '(') {
-                tamanhoParentese++;
-            } else if (inseridos[i] === ')') {
-                tamanhoParentese--;
-            }
-            if (tamanhoParentese == 1 && comeco == -1) {
-                comeco = i;
-            }
-            if (tamanhoParentese == 0 && comeco != -1) {
-                fim = i;
-                break;
-            }
+
+        // Verifica se a expressão está entre parênteses e resolve o conteúdo interno
+        if (exp.startsWith('(') && exp.endsWith(')')) {
+            return parentese(exp.slice(1, -1));
         }
-        if (comeco != -1 && fim != -1) {
-            return parentese(inseridos.slice(comeco + 1, fim));
-        }
+
+        // Define os operadores lógicos e suas funções correspondentes
         const operadores = {
-            '∧': (a, b) => a && b, // E lógico
-            '∨': (a, b) => a || b, // OU lógico
-            '→': (a, b) => (a === 1 && b === 0) ? 0 : 1, // Implicação
-            '↔': (a, b) => (a === b) ? 1 : 0 // Bicondicional
-            '⨁': (a, b) => (a!=b)? 1
+            '∧': (a, b) => a && b,
+            '∨': (a, b) => a || b,
+            '→': (a, b) => (!a || b) ? 1 : 0, // Correção da implicação
+            '↔': (a, b) => (a === b) ? 1 : 0,
+            '⊕': (a, b) => (a !== b) ? 1 : 0
         };
-        let resultado = 0;
-        let expressao = inseridos;
-        for (let op of ['∧', '∨']) {
-            if (expressao.includes(op)) {
-                let parts = separa(expressao, op);
-                resultado = operadores[op](parentese(parts[0]), parentese(parts[1]));
-                expressao = resultado.toString();
+
+        // Percorre os operadores para encontrar o primeiro válido na expressão
+        for (let op of ['→', '↔', '⊕', '∧', '∨']) {
+            if (exp.includes(op)) {
+                let parts = separa(exp, op);
+                return operadores[op](parentese(parts[0]), parentese(parts[1]));
             }
         }
-        for (let op of ['→', '↔']) {
-            if (expressao.includes(op)) {
-                let parts = separa(expressao, op);
-                resultado = operadores[op](parentese(parts[0]), parentese(parts[1]));
-                expressao = resultado.toString();
-            }
-        }
-        if (/^[0-1]$/.test(expressao)) {
-            return parseInt(expressao);
-        }
-        return validaSimples(expressao);
+
+        // Caso não tenha encontrado uma expressão válida, retorna erro
+        console.log("Expressão inválida:", exp);
+        throw new Error("Erro na avaliação da fórmula");
     }
 
     function separa(exp, operador) {
-        var tamanhoParentese = 0;
+        let tamanhoParentese = 0;
         for (let i = 0; i < exp.length; i++) {
-            if (exp[i] === '{') {
+            if (exp[i] === '(') {
                 tamanhoParentese++;
             } else if (exp[i] === ')') {
                 tamanhoParentese--;
-            } else if (exp[i] == operador && tamanhoParentese == 0) {
+            } else if (exp[i] === operador && tamanhoParentese === 0) {
                 return [exp.slice(0, i).trim(), exp.slice(i + 1).trim()];
             }
         }
         return [exp, ''];
     }
 
-    function validaSimples(inseridos) {
-        if (/^[A-E]$/.test(inseridos)) {
-            return pegaValor(inseridos);
-        }
-        if (/^[0-1]$/.test(inseridos)) {
-            return parseInt(inseridos);
-        }
-        console.log("Expressao inválida");
-    }
     try {
         return parentese(formula);
     } catch (e) {
+        console.error("Erro na avaliação da fórmula:", e);
         throw new Error("erro na avaliacao da formula");
     }
 }
+
 
 function char(c) {
     const formula = document.getElementById('formula');
