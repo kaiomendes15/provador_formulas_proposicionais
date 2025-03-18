@@ -105,6 +105,7 @@ function validar(formula, valor) {
             '∨': (a, b) => a || b, // OU lógico
             '→': (a, b) => (a === 1 && b === 0) ? 0 : 1, // Implicação
             '↔': (a, b) => (a === b) ? 1 : 0 // Bicondicional
+            '⨁': (a, b) => (a!=b)? 1
         };
         let resultado = 0;
         let expressao = inseridos;
