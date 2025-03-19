@@ -134,50 +134,81 @@ function validar(formula, valor) {
 
     function parentese(exp) {
         exp = exp.trim();
+        console.log("Analisando expressão:", exp); // Log para depuração
 
         // Caso seja uma variável, retorna seu valor
         if (/^[A-E]$/.test(exp)) {
             return pegaValor(exp);
         }
 
-        // Caso seja um número, retorna diretamente
+        // Caso seja um número (0 ou 1), retorna diretamente
         if (/^[0-1]$/.test(exp)) {
             return parseInt(exp);
         }
 
-        // Aplica a negação corretamente antes de continuar
-        while (exp.startsWith('¬')) {
-            exp = exp.slice(1).trim();
-            return 1 - parentese(exp);
-        }
+        // Removendo parênteses externos corretamente
+        exp = removeParentesesExternos(exp);
 
-        // Verifica se a expressão está entre parênteses e resolve o conteúdo interno
-        if (exp.startsWith('(') && exp.endsWith(')')) {
-            return parentese(exp.slice(1, -1));
+        // Aplica a negação corretamente antes de continuar
+        if (exp.startsWith('¬')) {
+            let restante = exp.slice(1).trim();
+            if (restante.length === 0) {
+                console.error("Erro: Negação sem expressão válida.");
+                throw new Error("Erro na negação da fórmula");
+            }
+            return 1 - parentese(restante);
         }
 
         // Define os operadores lógicos e suas funções correspondentes
         const operadores = {
             '∧': (a, b) => a && b,
             '∨': (a, b) => a || b,
-            '→': (a, b) => (!a || b) ? 1 : 0, // Correção da implicação
+            '→': (a, b) => (!a || b) ? 1 : 0,
             '↔': (a, b) => (a === b) ? 1 : 0,
             '⊕': (a, b) => (a !== b) ? 1 : 0
         };
 
-        // Percorre os operadores para encontrar o primeiro válido na expressão
+        // Percorre os operadores na ordem de precedência
         for (let op of ['→', '↔', '⊕', '∧', '∨']) {
-            if (exp.includes(op)) {
-                let parts = separa(exp, op);
+            let parts = separa(exp, op);
+            if (parts && parts.length === 2) {
+                console.log(`Operação encontrada: ${parts[0]} ${op} ${parts[1]}`);
                 return operadores[op](parentese(parts[0]), parentese(parts[1]));
             }
         }
 
         // Caso não tenha encontrado uma expressão válida, retorna erro
-        console.log("Expressão inválida:", exp);
+        console.error("Expressão inválida detectada:", exp);
         throw new Error("Erro na avaliação da fórmula");
     }
 
+    // Função para remover parênteses externos corretamente
+    function removeParentesesExternos(exp) {
+        while (exp.startsWith('(') && exp.endsWith(')')) {
+            let count = 0;
+            let remover = true;
+
+            for (let i = 0; i < exp.length; i++) {
+                if (exp[i] === '(') count++;
+                if (exp[i] === ')') count--;
+                if (count === 0 && i < exp.length - 1) {
+                    remover = false;
+                    break;
+                }
+            }
+
+            if (remover) {
+                exp = exp.slice(1, -1).trim();
+            } else {
+                break;
+            }
+        }
+
+        console.log("Após remover parênteses:", exp); // Log para depuração
+        return exp;
+    }
+
+    // Função para separar a expressão em torno de um operador
     function separa(exp, operador) {
         let tamanhoParentese = 0;
         for (let i = 0; i < exp.length; i++) {
@@ -186,10 +217,12 @@ function validar(formula, valor) {
             } else if (exp[i] === ')') {
                 tamanhoParentese--;
             } else if (exp[i] === operador && tamanhoParentese === 0) {
-                return [exp.slice(0, i).trim(), exp.slice(i + 1).trim()];
+                let parteEsquerda = exp.slice(0, i).trim();
+                let parteDireita = exp.slice(i + 1).trim();
+                return [parteEsquerda, parteDireita];
             }
         }
-        return [exp, ''];
+        return null; // Retorna null se o operador não for encontrado
     }
 
     try {
@@ -199,7 +232,6 @@ function validar(formula, valor) {
         throw new Error("erro na avaliacao da formula");
     }
 }
-
 
 function char(c) {
     const formula = document.getElementById('formula');
