@@ -103,7 +103,7 @@ function tabelaVerdade() {
         for (let i = 0; i < colunas; i++) {
             let linhas = {};
             for (let j = 0; j < qtdProp; j++) {
-                linhas[variaveis[j]] = (i >> (qtdProp - 1 - j)) & 1; // desloca pra direita
+                linhas[variaveis[j]] = (i >> (qtdProp - 1 - j)) & 1 ? 'V' : 'F'; // desloca pra direita
             }
             linhas.result = validar(formula, linhas);
             tabela.push(linhas);
@@ -129,7 +129,7 @@ function tabelaVerdade() {
 
 function validar(formula, valor) {
     function pegaValor(c) {
-        return valor[c] !== undefined ? valor[c] : 0;
+        return valor[c] !== undefined ? (valor[c] === 'V' ? 1 : 0) : 0;
     }
 
     function parentese(exp) {
@@ -226,7 +226,7 @@ function validar(formula, valor) {
     }
 
     try {
-        return parentese(formula);
+        return parentese(formula) ? 'V' : 'F';
     } catch (e) {
         console.error("Erro na avaliação da fórmula:", e);
         throw new Error("erro na avaliacao da formula");
