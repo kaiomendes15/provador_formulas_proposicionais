@@ -6,14 +6,14 @@
     <title>Calculadora</title>
 	<link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body>  
     <div class="container">
         <div class="options">
             <button onclick="char('A')">A</button>
             <button onclick="char('B')">B</button>
             <button onclick="char('C')">C</button>
             <button onclick="char('D')">D</button>
-            <button onclick="char('D')">E</button>
+            <button onclick="char('E')">E</button>
             <button onclick="char('→')">→</button>
             <button onclick="char('∧')">∧</button>
             <button onclick="char('∨')">∨</button>
@@ -25,7 +25,7 @@
         </div>
         <div class="input-formula">
             <label for="formula">Insira a fórmula: </label>
-            <input type="text" id="formula">
+            <input type="text" id="formula" readonly>
         </div>
         <div class="button">
             <button class="calculate-btn" onclick="tabelaVerdade()">Resultado</button>

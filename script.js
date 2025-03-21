@@ -1,3 +1,12 @@
+// permite que o input seja deletado usando o botao de apagar
+document.getElementById("formula").addEventListener("keydown", function (event) {
+    if (event.key === "Backspace") {
+        this.value = this.value.slice(0, -1); // Remove o último caractere
+    }
+    event.preventDefault(); // preventDefault impede que o evento(digita) não ocorra para os casos fora desse if de cima
+});
+
+
 function analisadorLexico(formula) {
     const validos = /^[A-E→∧∨¬↔⊕() ]*$/;
 
@@ -100,14 +109,17 @@ function tabelaVerdade() {
         const qtdProp = variaveis.length;
         const colunas = Math.pow(2, qtdProp);
         var tabela = [];
-        for (let i = 0; i < colunas; i++) {
+
+        // Gerar todas as combinações possíveis de valores para as variáveis
+        for (let i = colunas - 1; i >= 0; i--) { // agora gera ordenado, V primeiro e dps os F
             let linhas = {};
             for (let j = 0; j < qtdProp; j++) {
                 linhas[variaveis[j]] = (i >> (qtdProp - 1 - j)) & 1; // desloca pra direita
             }
-            linhas.result = validar(formula, linhas);
+            linhas.result = validar(formula, linhas); // Avaliar a fórmula
             tabela.push(linhas);
         }
+
         let tableHTML = '<table><tr>';
         // Adiciona cabeçalhos (variáveis e resultado)
         variaveis.forEach(varName => tableHTML += `<th>${varName}</th>`);
@@ -116,8 +128,8 @@ function tabelaVerdade() {
         // Preenche a tabela com os valores
         tabela.forEach(row => {
             tableHTML += '<tr>';
-            variaveis.forEach(varName => tableHTML += `<td>${row[varName]}</td>`);
-            tableHTML += `<td>${row.result}</td></tr>`;
+            variaveis.forEach(varName => tableHTML += `<td>${row[varName] === 1 ? 'V' : 'F'}</td>`);  // Corrigido aqui
+            tableHTML += `<td>${row.result === 1 ? 'V' : 'F'}</td></tr>`; // Corrigido aqui
         });
         tableHTML += '</table>';
 
@@ -129,12 +141,11 @@ function tabelaVerdade() {
 
 function validar(formula, valor) {
     function pegaValor(c) {
-        return valor[c] !== undefined ? valor[c] : 0;
+        return valor[c] !== undefined ? (valor[c] === 1 ? 1 : 0) : 0;  // Corrigido para tratar como booleano
     }
 
     function parentese(exp) {
         exp = exp.trim();
-        console.log("Analisando expressão:", exp); // Log para depuração
 
         // Caso seja uma variável, retorna seu valor
         if (/^[A-E]$/.test(exp)) {
@@ -152,11 +163,7 @@ function validar(formula, valor) {
         // Aplica a negação corretamente antes de continuar
         if (exp.startsWith('¬')) {
             let restante = exp.slice(1).trim();
-            if (restante.length === 0) {
-                console.error("Erro: Negação sem expressão válida.");
-                throw new Error("Erro na negação da fórmula");
-            }
-            return 1 - parentese(restante);
+            return 1 - parentese(restante);  // Negação
         }
 
         // Define os operadores lógicos e suas funções correspondentes
@@ -172,13 +179,11 @@ function validar(formula, valor) {
         for (let op of ['→', '↔', '⊕', '∧', '∨']) {
             let parts = separa(exp, op);
             if (parts && parts.length === 2) {
-                console.log(`Operação encontrada: ${parts[0]} ${op} ${parts[1]}`);
                 return operadores[op](parentese(parts[0]), parentese(parts[1]));
             }
         }
 
         // Caso não tenha encontrado uma expressão válida, retorna erro
-        console.error("Expressão inválida detectada:", exp);
         throw new Error("Erro na avaliação da fórmula");
     }
 
@@ -203,8 +208,6 @@ function validar(formula, valor) {
                 break;
             }
         }
-
-        console.log("Após remover parênteses:", exp); // Log para depuração
         return exp;
     }
 
@@ -226,12 +229,13 @@ function validar(formula, valor) {
     }
 
     try {
-        return parentese(formula);
+        return parentese(formula) ? 1 : 0; // Avalia a fórmula
     } catch (e) {
-        console.error("Erro na avaliação da fórmula:", e);
-        throw new Error("erro na avaliacao da formula");
+        throw new Error("Erro na avaliação da fórmula");
     }
 }
+
+
 
 function char(c) {
     const formula = document.getElementById('formula');
