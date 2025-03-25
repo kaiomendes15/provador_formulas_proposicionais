@@ -73,3 +73,54 @@ input {
     font-weight: bold;
     color: #333;
 }
+
+    .status {
+        margin-bottom: 15px;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    
+    .tautologia {
+        color: #155724;
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .contradicao {
+        color: #721c24;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .contingencia {
+        color: #856404;
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+    }
+    
+    .erro {
+        color: #721c24;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 15px;
+    }
+    
+    table, th, td {
+        border: 1px solid #ddd;
+    }
+    
+    th, td {
+        padding: 8px;
+        text-align: center;
+    }
+    
+    th {
+        background-color: #f2f2f2;
+    }
