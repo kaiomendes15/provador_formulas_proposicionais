@@ -1,172 +1,152 @@
-// permite que o input seja deletado usando o botao de apagar
+// Função para adicionar caracteres ao input
+function char(c) {
+    document.getElementById("formula").value += c;
+}
+
+// Função para limpar o input e resultado
+function limpar() {
+    document.getElementById("formula").value = "";
+    document.getElementById("result").innerHTML = "";
+}
+
+// Permite que o input seja deletado usando o botão de apagar
 document.getElementById("formula").addEventListener("keydown", function (event) {
     if (event.key === "Backspace") {
-        this.value = this.value.slice(0, -1); // Remove o último caractere
+        this.value = this.value.slice(0, -1);
+        event.preventDefault();
     }
-    event.preventDefault(); // preventDefault impede que o evento(digita) não ocorra para os casos fora desse if de cima
 });
 
+// Função para determinar o status da fórmula
+function verificarStatus(formula) {
+    const variaveis = [...new Set(formula.match(/[A-E]/g) || [])].sort();
+    const qtdProp = variaveis.length;
+    const totalCombinacoes = Math.pow(2, qtdProp);
+    let temVerdadeiro = false;
+    let temFalso = false;
 
-function analisadorLexico(formula) {
-    const validos = /^[A-E→∧∨¬↔⊕() ]*$/;
-
-    // percorre por cada caractere da formula
-    for (let char of formula) {
-        // verifica se possui algum dos simbolos validos ou alguma das proposicoes
-        if (!validos.test(char)) {
-            return { 
-                valido: false,
-                erro: `Símbolo inválido encontrado: ${char}` 
-            };
+    for (let i = 0; i < totalCombinacoes; i++) {
+        let linha = {};
+        for (let j = 0; j < qtdProp; j++) {
+            linha[variaveis[j]] = (i >> (qtdProp - 1 - j)) & 1;
         }
-    }
-
-    return { valido: true };
-}
-
-function verificaParenteses(formula) {
-    let parentesesFecha = []; // controla os parenteses.
-    // a cada interação ele reseta/volta a estar vazio.
-
-    // percorre toda a formula
-    for (let i = 0; i < formula.length; i++) {
-        let char = formula[i];
-
-        // verifica se possui um parentese abrindo
-        if (char === "(") {
-            // adiciona no array de controle
-            parentesesFecha.push(char);
-
-            // verifica se possui um parentese fechando
-        } else if (char === ")") {
-            // se o array de controle estiver vazio, significa que esse parentese fechando virá primeiro. => não pode
-            if (parentesesFecha.length === 0) {
-                return { valido: false, erro: "Parênteses desbalanceados." };
-            }
-
-            // se nao for o primeiro valor, significa que os parenteses estão ok.
-            parentesesFecha.pop();
-        }
-    }
-
-    if (parentesesFecha.length > 0) return { valido: false, erro: "Parênteses desbalanceados" };
-    return { valido: true };
-}
-
-function analisadorSintatico(formula) {
-    // verifica se os parenteses estão balanceados
-    const isParentesesOk = verificaParenteses(formula);
-
-    // se não estiverem, já retorna a fórmula como inválida.
-    if (!isParentesesOk.valido) {
-        return { valido: false, erro: isParentesesOk.erro };
-    }
-
-    // armazena o caractere anterior
-    let anterior = '';
-
-    // percorre a fórmula.
-    for (let i = 0; i < formula.length; i++) {
-        let char = formula[i];
-        // console.log(`[${i}]: ${'^∨→↔∨/~'.includes(char) && '^∨→↔∨/~'.includes(anterior)}`);
-
-        // verifica se o caractere atual é um conectivo igual ao caractere anterior
-        if ('∧∨→↔⊕¬'.includes(char) && '∧∨→↔⊕¬'.includes(anterior)) {
-            return { valido: false, erro: "Conectivos em sequência." };
+        
+        const resultado = validar(formula, linha);
+        if (resultado === 1) {
+            temVerdadeiro = true;
+        } else {
+            temFalso = true;
         }
 
-        // atualiza o valor do caractere anterior para a próxima interação
-        anterior = char;
+        // Otimização: se já encontrou ambos, pode parar
+        if (temVerdadeiro && temFalso) break;
     }
 
-    return { valido: true };
+    if (temVerdadeiro && !temFalso) return "tautologia";
+    if (!temVerdadeiro && temFalso) return "contradicao";
+    return "contingencia";
 }
 
+// Função principal que gera a tabela verdade
 function tabelaVerdade() {
-    const formula = document.getElementById('formula').value;
+    const formula = document.getElementById('formula').value.trim();
     const result = document.getElementById('result');
     result.innerHTML = "";
 
     if (!formula) {
-        result.innerHTML = "Por favor, insira uma fórmula.";
+        result.innerHTML = "<p class='erro'>Por favor, insira uma fórmula.</p>";
         return;
     }
 
-    const analiseLexica = analisadorLexico(formula);
-    if (analiseLexica.valido == false) {
-        result.innerHTML = `<p class="erro">${analiseLexica.erro}</p>`;
-        return;
-    }
-
-    const analiseSintatica = analisadorSintatico(formula);
-    if (analiseSintatica.valido == false) {
-        result.innerHTML = `<p class="erro">${analiseSintatica.erro}</p>`;
-        return;
-    }
-
+    
     try {
+        // Extrai variáveis únicas e ordena
         const variaveis = [...new Set(formula.match(/[A-E]/g) || [])].sort();
-        const qtdProp = variaveis.length;
-        const colunas = Math.pow(2, qtdProp);
-        var tabela = [];
+        const numVariaveis = variaveis.length;
+        const numCombinacoes = Math.pow(2, numVariaveis);
+        
+        let tabela = [];
+        let todosVerdadeiros = true;
+        let todosFalsos = true;
 
-        // Gerar todas as combinações possíveis de valores para as variáveis
-        for (let i = colunas - 1; i >= 0; i--) { // agora gera ordenado, V primeiro e dps os F
-            let linhas = {};
-            for (let j = 0; j < qtdProp; j++) {
-                linhas[variaveis[j]] = (i >> (qtdProp - 1 - j)) & 1; // desloca pra direita
+        // Gera todas combinações possíveis
+        for (let i = 0; i < numCombinacoes; i++) {
+            let combinacao = {};
+            
+            // Atribui valores para cada variável
+            for (let j = 0; j < numVariaveis; j++) {
+                combinacao[variaveis[j]] = (i >> (numVariaveis - 1 - j)) & 1;
             }
-            linhas.result = validar(formula, linhas); // Avaliar a fórmula
-            tabela.push(linhas);
+            
+            // Avalia a fórmula
+            combinacao.resultado = validar(formula, combinacao);
+            tabela.push(combinacao);
+            
+            // Verifica status
+            if (combinacao.resultado === 1) {
+                todosFalsos = false;
+            } else {
+                todosVerdadeiros = false;
+            }
         }
 
-        let tableHTML = '<table><tr>';
-        // Adiciona cabeçalhos (variáveis e resultado)
-        variaveis.forEach(varName => tableHTML += `<th>${varName}</th>`);
-        tableHTML += `<th>${formula}</th></tr>`;
+        // Determina o status
+        let status;
+        if (todosVerdadeiros) {
+            status = '<div class="status tautologia">TAUTOLOGIA (sempre verdadeira)</div>';
+        } else if (todosFalsos) {
+            status = '<div class="status contradicao">CONTRADIÇÃO (sempre falsa)</div>';
+        } else {
+            status = '<div class="status contingencia">CONTINGÊNCIA (pode ser V ou F)</div>';
+        }
 
-        // Preenche a tabela com os valores
-        tabela.forEach(row => {
-            tableHTML += '<tr>';
-            variaveis.forEach(varName => tableHTML += `<td>${row[varName] === 1 ? 'V' : 'F'}</td>`);  // Corrigido aqui
-            tableHTML += `<td>${row.result === 1 ? 'V' : 'F'}</td></tr>`; // Corrigido aqui
+        // Gera a tabela HTML
+        let html = status + '<table><tr>';
+        
+        // Cabeçalhos
+        variaveis.forEach(v => html += `<th>${v}</th>`);
+        html += `<th>${formula}</th></tr>`;
+        
+        // Linhas
+        tabela.forEach(linha => {
+            html += '<tr>';
+            variaveis.forEach(v => html += `<td>${linha[v] ? 'V' : 'F'}</td>`);
+            html += `<td>${linha.resultado ? 'V' : 'F'}</td></tr>`;
         });
-        tableHTML += '</table>';
+        
+        html += '</table>';
+        result.innerHTML = html;
 
-        result.innerHTML = tableHTML;
     } catch (error) {
-        console.log("Erro na tabela verdade", error);
+        result.innerHTML = `<p class="erro">Erro: ${error.message}</p>`;
+        console.error("Erro:", error);
     }
 }
 
+// Função para avaliar a fórmula
 function validar(formula, valor) {
     function pegaValor(c) {
-        return valor[c] !== undefined ? (valor[c] === 1 ? 1 : 0) : 0;  // Corrigido para tratar como booleano
+        return valor[c] !== undefined ? (valor[c] === 1 ? 1 : 0) : 0;
     }
 
     function parentese(exp) {
         exp = exp.trim();
 
-        // Caso seja uma variável, retorna seu valor
         if (/^[A-E]$/.test(exp)) {
             return pegaValor(exp);
         }
 
-        // Caso seja um número (0 ou 1), retorna diretamente
         if (/^[0-1]$/.test(exp)) {
             return parseInt(exp);
         }
 
-        // Removendo parênteses externos corretamente
         exp = removeParentesesExternos(exp);
 
-        // Aplica a negação corretamente antes de continuar
         if (exp.startsWith('¬')) {
             let restante = exp.slice(1).trim();
-            return 1 - parentese(restante);  // Negação
+            return 1 - parentese(restante);
         }
 
-        // Define os operadores lógicos e suas funções correspondentes
         const operadores = {
             '∧': (a, b) => a && b,
             '∨': (a, b) => a || b,
@@ -175,7 +155,6 @@ function validar(formula, valor) {
             '⊕': (a, b) => (a !== b) ? 1 : 0
         };
 
-        // Percorre os operadores na ordem de precedência
         for (let op of ['→', '↔', '⊕', '∧', '∨']) {
             let parts = separa(exp, op);
             if (parts && parts.length === 2) {
@@ -183,11 +162,9 @@ function validar(formula, valor) {
             }
         }
 
-        // Caso não tenha encontrado uma expressão válida, retorna erro
         throw new Error("Erro na avaliação da fórmula");
     }
 
-    // Função para remover parênteses externos corretamente
     function removeParentesesExternos(exp) {
         while (exp.startsWith('(') && exp.endsWith(')')) {
             let count = 0;
@@ -211,7 +188,6 @@ function validar(formula, valor) {
         return exp;
     }
 
-    // Função para separar a expressão em torno de um operador
     function separa(exp, operador) {
         let tamanhoParentese = 0;
         for (let i = 0; i < exp.length; i++) {
@@ -225,24 +201,12 @@ function validar(formula, valor) {
                 return [parteEsquerda, parteDireita];
             }
         }
-        return null; // Retorna null se o operador não for encontrado
+        return null;
     }
 
     try {
-        return parentese(formula) ? 1 : 0; // Avalia a fórmula
+        return parentese(formula) ? 1 : 0;
     } catch (e) {
         throw new Error("Erro na avaliação da fórmula");
     }
-}
-
-
-
-function char(c) {
-    const formula = document.getElementById('formula');
-    formula.value += c;
-}
-
-function limpar() {
-    document.getElementById('formula').value = "";
-    document.getElementById('result').innerHTML = "";
 }
